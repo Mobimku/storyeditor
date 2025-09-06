@@ -63,15 +63,15 @@ class MainWindow:
 
         # Left panel (for editor tabs)
         left_panel = self.create_left_panel(main_paned)
-        main_paned.add(left_panel, weight=1, minsize=300)
+        main_paned.add(left_panel, weight=1)
 
         # Center panel (for preview and timeline)
         center_panel = self.create_center_panel(main_paned)
-        main_paned.add(center_panel, weight=3, minsize=600)
+        main_paned.add(center_panel, weight=3)
 
         # Right panel (placeholder for effects/properties)
         right_panel = self.create_right_panel(main_paned)
-        main_paned.add(right_panel, weight=1, minsize=250)
+        main_paned.add(right_panel, weight=1)
 
         # Status Bar at the bottom
         self.setup_status_bar()
@@ -109,11 +109,11 @@ class MainWindow:
 
         # Preview Widget (top)
         self.preview_widget = PreviewWidget(center_paned, self.theme_manager, self.config)
-        center_paned.add(self.preview_widget.frame, weight=3, minsize=400)
+        center_paned.add(self.preview_widget.frame, weight=3)
         
         # Timeline Widget (bottom)
         self.timeline_widget = TimelineWidget(center_paned, self.timeline_manager, self.theme_manager)
-        center_paned.add(self.timeline_widget.frame, weight=1, minsize=200)
+        center_paned.add(self.timeline_widget.frame, weight=1)
 
         return center_frame
 
