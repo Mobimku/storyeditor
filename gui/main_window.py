@@ -52,25 +52,39 @@ class MainWindow:
 # gui/main_window.py (bagian setup_ui yang perlu diperbaiki)
 
     def setup_ui(self):
-        """Setup the main UI layout"""
+        """Setup the main UI layout using .grid() for robustness."""
+        # Configure the root window's grid layout
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
         # Main container
-        main_container = self.theme_manager.create_custom_frame(self.root)
-        main_container.pack(fill='both', expand=True, padx=10, pady=10)
+        main_container = self.theme_manager.create_custom_frame(self.root, padding=10)
+        main_container.grid(row=0, column=0, sticky='nsew')
         
+        # Configure the main container's grid layout
+        main_container.grid_rowconfigure(0, weight=4)  # Preview area gets 4 parts of the space
+        main_container.grid_rowconfigure(1, weight=5)  # Notebook gets 5 parts of the space
+        main_container.grid_rowconfigure(2, weight=0)  # Progress bar is fixed height
+        main_container.grid_rowconfigure(3, weight=0)  # Status label is fixed height
+        main_container.grid_columnconfigure(0, weight=1)
+
         # Preview area (placeholder)
-        preview_frame = self.theme_manager.create_custom_frame(main_container, 'Preview.TFrame')
-        preview_frame.pack(fill='both', expand=True, pady=(0, 10))
+        preview_frame = self.theme_manager.create_custom_frame(main_container, style='Preview.TFrame')
+        preview_frame.grid(row=0, column=0, sticky='nsew', pady=(0, 10))
         
         preview_label = self.theme_manager.create_custom_label(
             preview_frame, 
             "Video Preview Area\n(Will be implemented in preview_widget.py)",
             font=('Arial', 12)
         )
-        preview_label.pack(expand=True)
+        # Center the label within the preview frame
+        preview_frame.grid_rowconfigure(0, weight=1)
+        preview_frame.grid_columnconfigure(0, weight=1)
+        preview_label.grid(row=0, column=0, sticky='nsew')
         
         # Notebook for tabs
         self.notebook = self.theme_manager.create_custom_notebook(main_container)
-        self.notebook.pack(fill='both', expand=True, pady=(0, 10))
+        self.notebook.grid(row=1, column=0, sticky='nsew', pady=(0, 10))
         
         # Create tabs
         self.editor_tab = EditorTab(self.notebook, self.theme_manager, self.config)
@@ -83,10 +97,9 @@ class MainWindow:
         self.progress_var = tk.DoubleVar()
         self.progress_bar = self.theme_manager.create_custom_progressbar(
             main_container, 
-            variable=self.progress_var,
-            length=400
+            variable=self.progress_var
         )
-        self.progress_bar.pack(fill='x', pady=(0, 5))
+        self.progress_bar.grid(row=2, column=0, sticky='ew', pady=(0, 5))
         
         # Status label
         self.status_label = self.theme_manager.create_custom_label(
@@ -94,7 +107,7 @@ class MainWindow:
             "Ready",
             font=('Arial', 9)
         )
-        self.status_label.pack()
+        self.status_label.grid(row=3, column=0, sticky='ew')
     
     def setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts"""
