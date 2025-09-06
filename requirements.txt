@@ -1,0 +1,20 @@
+# Dependencies untuk Python 3.13 (experimental)
+# Install satu per satu dengan versi terbaru
+
+# Core dependencies - install dalam urutan ini
+setuptools>=69.0.0
+wheel>=0.42.0
+numpy>=1.26.0
+opencv-python>=4.8.0
+
+# Install nanti setelah core berhasil
+# Pillow
+# psutil
+
+# Audio processing (mungkin belum support Python 3.13)
+# librosa  
+# soundfile
+
+# URL downloader (kemungkinan besar belum support)
+# yt-dlp
+# requests

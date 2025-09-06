@@ -1,0 +1,49 @@
+2025-09-06 18:55:40,909 - __main__ - INFO - Starting FFmpeg Editor
+2025-09-06 18:55:41,298 - __main__ - INFO - Loaded configuration: FFmpeg Editor v1.0.0
+2025-09-06 18:55:41,298 - core.temp_manager - INFO - TempManager initialized
+2025-09-06 18:55:41,849 - utils.progress_tracker - INFO - ProgressTracker initialized
+2025-09-06 18:55:41,866 - __main__ - ERROR - Application error: ThemeManager.create_custom_frame() got an unexpected keyword argument 'padding'
+2025-09-06 18:55:41,868 - __main__ - INFO - Cleaning up temporary files
+2025-09-06 18:55:41,869 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 18:55:41,869 - __main__ - INFO - Application exited
+2025-09-06 18:55:41,869 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 18:55:41,870 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:09:45,556 - __main__ - INFO - Starting FFmpeg Editor
+2025-09-06 19:09:45,617 - __main__ - INFO - Loaded configuration: FFmpeg Editor v1.0.0
+2025-09-06 19:09:45,617 - core.temp_manager - INFO - TempManager initialized
+2025-09-06 19:09:45,689 - __main__ - ERROR - Application error: name 'logging' is not defined
+2025-09-06 19:09:45,693 - __main__ - INFO - Cleaning up temporary files
+2025-09-06 19:09:45,693 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:09:45,694 - __main__ - INFO - Application exited
+2025-09-06 19:09:45,694 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:09:45,694 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:18:50,095 - __main__ - INFO - Starting FFmpeg Editor
+2025-09-06 19:18:50,155 - __main__ - INFO - Loaded configuration: FFmpeg Editor v1.0.0
+2025-09-06 19:18:50,155 - core.temp_manager - INFO - TempManager initialized
+2025-09-06 19:18:50,226 - gui.theme_manager - INFO - ThemeManager initialized
+2025-09-06 19:18:50,226 - utils.progress_tracker - INFO - ProgressTracker initialized
+2025-09-06 19:18:50,253 - __main__ - ERROR - Application error: ThemeManager.create_custom_combobox() got an unexpected keyword argument 'textvariable'
+2025-09-06 19:18:50,256 - __main__ - INFO - Cleaning up temporary files
+2025-09-06 19:18:50,256 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:18:50,256 - __main__ - INFO - Application exited
+2025-09-06 19:18:50,256 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 19:18:50,257 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 20:05:34,906 - __main__ - INFO - Starting FFmpeg Editor
+2025-09-06 20:05:34,970 - __main__ - INFO - Loaded configuration: FFmpeg Editor v1.0.0
+2025-09-06 20:05:34,971 - core.temp_manager - INFO - TempManager initialized
+2025-09-06 20:05:35,047 - gui.theme_manager - INFO - ThemeManager initialized
+2025-09-06 20:05:35,048 - utils.progress_tracker - INFO - ProgressTracker initialized
+2025-09-06 20:05:35,113 - __main__ - ERROR - Application error: ThemeManager.create_custom_checkbutton() got an unexpected keyword argument 'variable'
+2025-09-06 20:05:35,117 - __main__ - INFO - Cleaning up temporary files
+2025-09-06 20:05:35,117 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 20:05:35,117 - __main__ - INFO - Application exited
+2025-09-06 20:05:35,118 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 20:05:35,118 - core.temp_manager - INFO - Cleanup completed. 0 items cleaned.
+2025-09-06 20:09:07,372 - __main__ - INFO - Starting FFmpeg Editor
+2025-09-06 20:09:07,460 - __main__ - INFO - Loaded configuration: FFmpeg Editor v1.0.0
+2025-09-06 20:09:07,460 - core.temp_manager - INFO - TempManager initialized
+2025-09-06 20:09:07,540 - gui.theme_manager - INFO - ThemeManager initialized
+2025-09-06 20:09:07,541 - utils.progress_tracker - INFO - ProgressTracker initialized
+2025-09-06 20:09:07,609 - gui.tab_editor - INFO - EditorTab initialized
+2025-09-06 20:09:07,672 - gui.tab_compiler - INFO - CompilerTab initialized
+2025-09-06 20:09:07,675 - gui.main_window - INFO - Main window initialized
