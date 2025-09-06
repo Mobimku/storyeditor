@@ -6,6 +6,7 @@ Editor tab interface
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import logging
+import os
 from typing import Dict, Any, Optional
 
 class EditorTab:

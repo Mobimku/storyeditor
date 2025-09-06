@@ -1,94 +1,98 @@
-# core/automation.py
-"""
-Automation pipeline for the FFmpeg Editor
-"""
-
 import logging
-from typing import Dict, Any
-
 from .temp_manager import TempManager
 from .video_processor import VideoProcessor
 from .scene_detector import SceneDetector
 
 class AutomationPipeline:
     """
-    Orchestrates the entire automated video editing workflow.
+    Orchestrates the entire automated video editing pipeline.
     """
-
-    def __init__(self, config: Dict[str, Any]):
-        """
-        Initializes the automation pipeline with all necessary components.
-
-        Args:
-            config: The application configuration dictionary.
-        """
-        self.config = config
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
-
-        # Initialize core components correctly
-        self.temp_manager = TempManager(self.config)
+        self.temp_manager = TempManager()
         self.video_processor = VideoProcessor(self.temp_manager)
-        self.scene_detector = SceneDetector(self.temp_manager)
+        # Access the scene_detector from the video_processor to avoid redundancy
+        self.scene_detector = self.video_processor.scene_detector
+        self.logger.info("AutomationPipeline initialized.")
 
-        self.logger.info("AutomationPipeline initialized correctly")
-
-    def execute_full_pipeline(self, input_source: str, settings: Dict[str, Any]) -> str:
+    def execute_full_pipeline(self, input_source: str, settings: dict) -> tuple:
         """
         Runs the complete video processing pipeline from start to finish.
-        This is a refactored version that uses the high-level methods
-        from the other core modules.
 
         Args:
             input_source: The path to the source video file.
             settings: A dictionary of processing settings.
 
         Returns:
-            The path to the final edited video file.
+            A tuple containing the path to the final video and final audio file.
         """
-        self.logger.info(f"--- Starting Refactored Automation Pipeline for {input_source} ---")
+        self.logger.info(f"--- Starting Full Automation Pipeline for {input_source} ---")
 
-        # Step 1: Scene Detection
-        self.logger.info("Step 1: Detecting scenes...")
-        scenes = self.scene_detector.detect_scenes(input_source)
-        if not scenes:
-            self.logger.error("No scenes were detected. Aborting pipeline.")
-            raise RuntimeError("Could not detect any scenes in the provided video.")
-        self.logger.info(f"Detected {len(scenes)} scenes.")
+        # For now, we assume input_source is a local file path.
+        # A future implementation would handle URL downloads here.
 
-        # Step 2: Generate Cut Definitions
-        # This method exists in scene_detector, so we use it.
-        self.logger.info("Step 2: Generating fair use cut definitions...")
-        cut_definitions = self.scene_detector.generate_fair_use_cuts(
-            scenes,
-            min_duration=settings.get('min_cut_duration', 3.0),
-            max_duration=settings.get('max_cut_duration', 7.0)
+        # Step 1: Preprocessing Phase (e.g., Trim)
+        # Use get_video_info to find duration if trim_end is not provided.
+        video_info = self.video_processor.get_video_info(input_source)
+        trim_end = settings.get('trim_end', video_info['duration'])
+
+        trimmed_video = self.video_processor.trim_video(
+            input_source,
+            settings.get('trim_start', 0),
+            trim_end
         )
-        if not cut_definitions:
-            self.logger.error("No cut definitions were generated. Aborting pipeline.")
-            raise RuntimeError("Could not generate any cut definitions from the scenes.")
-        self.logger.info(f"Generated {len(cut_definitions)} cut definitions.")
+        self.logger.info(f"1. Preprocessing: Video trimmed to {trimmed_video}")
 
-        # Step 3: Create Video Clips from Definitions
-        # This uses the method I implemented in video_processor
-        self.logger.info("Step 3: Creating video clips from definitions...")
-        # Note: The test for create_random_cuts implies it takes scene_data, not cut_definitions.
-        # I will use the `create_random_cuts` method as it is implemented in video_processor.py
-        # which takes scene data and returns a list of file paths.
-        cut_files = self.video_processor.create_random_cuts(input_source, scenes)
-        if not cut_files:
-             self.logger.error("Failed to create video clips. Aborting pipeline.")
-             raise RuntimeError("Failed to create video clips.")
-        self.logger.info(f"Created {len(cut_files)} video clip files.")
+        # Step 2: Audio Analysis Phase (Remove Silence)
+        (video_no_silence, _) = self.video_processor.remove_silent_parts(
+            trimmed_video,
+            audio_threshold=settings.get('silence_threshold', -40.0)
+        )
+        self.logger.info(f"2. Audio Analysis: Silent parts removed, new video at {video_no_silence}")
 
-        # Step 4: Compile the sequence in zigzag order
-        # This uses the method I implemented in video_processor, which handles the
-        # file list creation and zigzag logic internally.
-        self.logger.info("Step 4: Compiling clips into zigzag sequence...")
-        final_video_path = self.video_processor.compile_zigzag_sequence(cut_files)
-        self.logger.info(f"Compilation complete. Final video at: {final_video_path}")
+        # Step 3: Scene Detection Phase
+        scenes = self.scene_detector.detect_scenes(video_no_silence)
+        filtered_scenes = self.scene_detector.filter_scene_breaks(scenes)
+        self.logger.info(f"3. Scene Detection: Found {len(filtered_scenes)} scenes after filtering.")
 
-        # Step 5: (Future) Apply effects, mixing, etc.
-        # For now, the pipeline stops here as per the core task.
+        # Step 4: Fair Use Cut Generation
+        video_duration = self.video_processor.get_video_info(video_no_silence)['duration']
+        cuts = self.scene_detector.generate_fair_use_cuts(filtered_scenes, video_duration)
 
-        self.logger.info(f"--- Pipeline Finished Successfully ---")
-        return final_video_path
+        if not cuts:
+            self.logger.error("No cuts were generated from the scenes. Aborting pipeline.")
+            raise RuntimeError("Could not generate any cuts from the provided video.")
+
+        # Step 5: Fair Use Sequencing (Zigzag)
+        zigzag_cuts_definitions = self.scene_detector.create_zigzag_sequence(cuts)
+        self.logger.info(f"4 & 5. Fair Use: Generated {len(zigzag_cuts_definitions)} cuts and applied zigzag sequence.")
+
+        # Create the actual video clips for each cut definition
+        cut_files = []
+        for i, cut_def in enumerate(zigzag_cuts_definitions):
+            self.logger.debug(f"Creating clip {i} from {cut_def['start']:.2f}s for {cut_def['duration']:.2f}s")
+            clip = self.video_processor.trim_video(
+                video_no_silence,
+                cut_def['start'],
+                cut_def['start'] + cut_def['duration']
+            )
+            cut_files.append(clip)
+        self.logger.info(f"   - Created {len(cut_files)} video clip files from definitions.")
+
+        # Step 6: Compile the sequence
+        compiled_video = self.video_processor.compile_zigzag_sequence(cut_files)
+        self.logger.info(f"6. Compilation: Compiled final video at {compiled_video}")
+
+        # Step 7: Effects Application (Placeholder)
+        # A real implementation would apply color grading/panning here based on settings.
+        final_video = compiled_video
+        self.logger.info("7. Effects: Skipping final effects application for this pipeline version.")
+
+        # As per the original spec, return both video and a separate audio file.
+        final_audio = self.video_processor.extract_audio(final_video)
+
+        self.logger.info(f"--- Pipeline Finished ---")
+        self.logger.info(f"Final Video: {final_video}")
+        self.logger.info(f"Final Audio: {final_audio}")
+
+        return (final_video, final_audio)

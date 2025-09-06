@@ -16,7 +16,6 @@ sys.path.insert(0, current_dir)
 
 from gui.main_window import MainWindow
 from core.temp_manager import TempManager
-from core.automation import AutomationPipeline
 
 def setup_logging():
     """Setup logging configuration"""
@@ -148,47 +147,25 @@ def main():
     config = load_config()
     logger.info(f"Loaded configuration: {config['app_name']} v{config['version']}")
     
-    # Check for command-line arguments to run the pipeline directly
-    if len(sys.argv) > 1:
-        input_file = sys.argv[1]
-        logger.info(f"Command-line mode activated. Running pipeline for: {input_file}")
+    # Initialize temporary file manager
+    temp_manager = TempManager(config)
+
+    try:
+        # Create and run main application
+        app = MainWindow(config)
+        app.run()
         
-        if not os.path.exists(input_file):
-            logger.error(f"Input file not found: {input_file}")
-            return
+    except Exception as e:
+        logger.error(f"Application error: {e}")
+        import traceback
+        traceback.print_exc()
 
-        try:
-            pipeline = AutomationPipeline(config)
-            # Use default settings for now
-            settings = config
-            final_video = pipeline.execute_full_pipeline(input_file, settings)
-            logger.info(f"Pipeline finished. Final video available at: {final_video}")
-        except Exception as e:
-            logger.error(f"Pipeline execution failed: {e}")
-            import traceback
-            traceback.print_exc()
-
-    else:
-        #
-        # Fallback to GUI mode if no command-line arguments
-        logger.info("No command-line arguments found. Starting GUI mode.")
-        temp_manager = TempManager(config)
-        try:
-            # Create and run main application
-            app = MainWindow(config)
-            app.run()
-
-        except Exception as e:
-            logger.error(f"Application error: {e}")
-            import traceback
-            traceback.print_exc()
+    finally:
+        # Cleanup temporary files
+        logger.info("Cleaning up temporary files")
+        temp_manager.cleanup_all()
         
-        finally:
-            # Cleanup temporary files
-            logger.info("Cleaning up temporary files")
-            temp_manager.cleanup_all()
-
-            logger.info("Application exited")
+        logger.info("Application exited")
 
 if __name__ == "__main__":
     main()
