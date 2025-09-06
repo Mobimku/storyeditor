@@ -6,7 +6,6 @@ Editor tab interface
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import logging
-import os
 from typing import Dict, Any, Optional
 
 class EditorTab:
@@ -385,3 +384,44 @@ class EditorTab:
         # Schedule next update
         self.frame.after(100, self.update_time_labels)
 
+# Test the editor tab
+if __name__ == "__main__":
+    import logging
+    import os
+
+    logging.basicConfig(level=logging.INFO)
+
+    root = tk.Tk()
+    root.title("Editor Tab Test")
+    root.geometry("600x700")
+
+    # Mock theme manager
+    class MockThemeManager:
+        def create_custom_frame(self, parent, style='TFrame', padding=0):
+            return ttk.Frame(parent)
+
+        def create_custom_label(self, parent, text, font=None):
+            return ttk.Label(parent, text=text, font=font)
+
+        def create_custom_button(self, parent, text, command=None, width=None):
+            return ttk.Button(parent, text=text, command=command, width=width)
+
+        def create_custom_entry(self, parent, width=None):
+            return ttk.Entry(parent, width=width)
+
+        def create_custom_combobox(self, parent, values=None, width=None):
+            return ttk.Combobox(parent, values=values, width=width)
+
+        def create_custom_scale(self, parent, from_=0, to=100, variable=None, orient='horizontal', length=200):
+            return ttk.Scale(parent, from_=from_, to=to, variable=variable, orient=orient, length=length)
+
+        def create_custom_checkbutton(self, parent, text, variable=None):
+            return ttk.Checkbutton(parent, text=text, variable=variable)
+
+    theme_manager = MockThemeManager()
+    editor_tab = EditorTab(root, theme_manager)
+
+    # Start time updates
+    editor_tab.update_time_labels()
+
+    root.mainloop()

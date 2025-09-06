@@ -1,6 +1,6 @@
-# gui/preview_widget.py (IMPROVED VERSION)
+# gui/preview_widget.py
 """
-Video preview widget with improved error handling and performance
+Video preview widget with playback controls
 """
 
 import tkinter as tk
@@ -10,15 +10,8 @@ import numpy as np
 import threading
 import time
 import logging
-import os
+import os  # Tambahkan import ini
 from typing import Optional, Callable, Dict, Any
-
-try:
-    from PIL import Image, ImageTk
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
-    logging.warning("PIL/Pillow not available. Preview functionality will be limited.")
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,7 +20,7 @@ from gui.theme_manager import ThemeManager
 
 class PreviewWidget:
     """
-    Enhanced video preview widget with better error handling
+    Video preview widget with playback controls
     """
     
     def __init__(self, parent, theme_manager: ThemeManager, config: Dict[str, Any] = None):
@@ -36,10 +29,6 @@ class PreviewWidget:
         self.config = config or {}
         self.logger = logging.getLogger(__name__)
         
-        # Check PIL availability
-        if not PIL_AVAILABLE:
-            self.logger.error("PIL/Pillow is required for video preview. Install with: pip install Pillow")
-
         # Video state
         self.video_path = None
         self.cap = None
@@ -48,20 +37,15 @@ class PreviewWidget:
         self.current_time = 0.0
         self.total_duration = 0.0
         self.fps = 30.0
-        self.playback_speed = 1.0
         
         # Playback thread
         self.playback_thread = None
         self.stop_playback = False
-        self.thread_lock = threading.Lock()
-
-        # Markers
-        self.markers = []
         
         # Create UI
         self.create_ui()
         
-        self.logger.info("Enhanced PreviewWidget initialized")
+        self.logger.info("PreviewWidget initialized")
     
     def create_ui(self):
         """Create the preview widget UI"""
@@ -84,7 +68,12 @@ class PreviewWidget:
         self.canvas.pack(fill='both', expand=True)
         
         # Placeholder text
-        self.show_placeholder("No video loaded")
+        self.placeholder_text = self.canvas.create_text(
+            400, 300,
+            text="No video loaded",
+            fill=self.theme_manager.get_color('text_secondary'),
+            font=('Arial', 14)
+        )
         
         # Controls frame
         controls_frame = self.theme_manager.create_custom_frame(self.frame)
@@ -139,137 +128,96 @@ class PreviewWidget:
         )
         self.volume_slider.pack(side='left')
         
-        # Bind canvas events
+        # Bind canvas resize
         self.canvas.bind('<Configure>', self.on_canvas_resize)
-        self.canvas.bind('<Button-1>', self.on_canvas_click)
     
-    def show_placeholder(self, text: str):
-        """Show placeholder text on canvas"""
-        self.canvas.delete("all")
-        canvas_width = self.canvas.winfo_width() or 400
-        canvas_height = self.canvas.winfo_height() or 300
-        
-        self.canvas.create_text(
-            canvas_width // 2,
-            canvas_height // 2,
-            text=text,
-            fill=self.theme_manager.get_color('text_secondary'),
-            font=('Arial', 14)
-        )
-
     def load_video(self, video_path: str) -> bool:
-        """Load video file for preview with enhanced error handling"""
+        """
+        Load video file for preview
+
+        Args:
+            video_path: Path to video file
+
+        Returns:
+            True if video loaded successfully
+        """
         try:
-            # Check PIL availability
-            if not PIL_AVAILABLE:
-                self.show_placeholder("PIL/Pillow required for video preview\nInstall with: pip install Pillow")
-                return False
-
-            # Check if file exists
-            if not os.path.exists(video_path):
-                self.logger.error(f"Video file not found: {video_path}")
-                self.show_placeholder("Video file not found")
-                return False
-
             # Close existing video
             if self.cap:
                 self.cap.release()
             
-            # Stop any existing playback
-            self.stop_playback_thread()
-
             # Open new video
             self.cap = cv2.VideoCapture(video_path)
             if not self.cap.isOpened():
                 self.logger.error(f"Could not open video: {video_path}")
-                self.show_placeholder("Could not open video file")
                 return False
             
             # Get video properties
             self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-            if self.fps <= 0:
-                self.fps = 30.0  # Default fallback
-
-            frame_count = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
-            self.total_duration = frame_count / self.fps if self.fps > 0 else 0
+            self.total_duration = self.cap.get(cv2.CAP_PROP_FRAME_COUNT) / self.fps
             self.video_path = video_path
             
             # Reset playback state
             self.current_time = 0.0
             self.seek_var.set(0.0)
             
-            # Clear markers
-            self.markers.clear()
-
             # Update UI
             self.update_time_display()
-            self.show_placeholder("Loading first frame...")
+            self.placeholder_text = self.canvas.create_text(
+                400, 300,
+                text="Loading video...",
+                fill=self.theme_manager.get_color('text_secondary'),
+                font=('Arial', 14)
+            )
             
             # Load first frame
             self.load_frame(0)
             
-            self.logger.info(f"Loaded video: {video_path} ({self.total_duration:.2f}s, {self.fps:.1f} fps)")
+            self.logger.info(f"Loaded video: {video_path} ({self.total_duration:.2f}s)")
             return True
             
         except Exception as e:
             self.logger.error(f"Failed to load video: {e}")
-            self.show_placeholder(f"Error loading video:\n{str(e)}")
             return False
     
     def load_frame(self, frame_number: int):
-        """Load specific frame with error handling"""
+        """Load specific frame"""
         if not self.cap or not self.cap.isOpened():
             return
         
         try:
-            with self.thread_lock:
-                # Set frame position
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-                
-                # Read frame
-                ret, frame = self.cap.read()
-                if ret and frame is not None:
-                    self.current_frame = frame
-                    # Schedule display on main thread
-                    self.canvas.after_idle(lambda: self.display_frame(frame))
+            # Set frame position
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
-                    # Update current time
-                    self.current_time = frame_number / self.fps
-                    if self.total_duration > 0:
-                        seek_percent = (self.current_time / self.total_duration) * 100
-                        # Schedule UI update on main thread
-                        self.canvas.after_idle(lambda: self.seek_var.set(seek_percent))
-                        self.canvas.after_idle(self.update_time_display)
-                else:
-                    self.logger.warning(f"Could not read frame {frame_number}")
+            # Read frame
+            ret, frame = self.cap.read()
+            if ret:
+                self.current_frame = frame
+                self.display_frame(frame)
+                
+                # Update current time
+                self.current_time = frame_number / self.fps
+                self.seek_var.set((self.current_time / self.total_duration) * 100)
+                self.update_time_display()
             
         except Exception as e:
-            self.logger.error(f"Failed to load frame {frame_number}: {e}")
+            self.logger.error(f"Failed to load frame: {e}")
     
     def display_frame(self, frame):
-        """Display frame on canvas with improved error handling"""
+        """Display frame on canvas"""
         try:
-            if not PIL_AVAILABLE:
-                return
-
             # Convert BGR to RGB
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             # Get canvas dimensions
-            self.canvas.update_idletasks()  # Ensure accurate dimensions
             canvas_width = self.canvas.winfo_width()
             canvas_height = self.canvas.winfo_height()
             
             if canvas_width <= 1 or canvas_height <= 1:
-                # Canvas not ready yet, try again later
-                self.canvas.after(100, lambda: self.display_frame(frame))
                 return
             
             # Calculate aspect ratio
             frame_height, frame_width = frame.shape[:2]
-            if frame_width <= 0 or frame_height <= 0:
-                return
-
             aspect_ratio = frame_width / frame_height
             
             # Calculate display dimensions
@@ -280,14 +228,11 @@ class PreviewWidget:
                 display_width = canvas_width
                 display_height = int(display_width / aspect_ratio)
             
-            # Ensure minimum size
-            display_width = max(1, display_width)
-            display_height = max(1, display_height)
-
             # Resize frame
             resized_frame = cv2.resize(frame_rgb, (display_width, display_height))
             
             # Convert to PhotoImage
+            from PIL import Image, ImageTk
             image = Image.fromarray(resized_frame)
             photo = ImageTk.PhotoImage(image=image)
             
@@ -297,49 +242,14 @@ class PreviewWidget:
                 canvas_width // 2, 
                 canvas_height // 2, 
                 image=photo, 
-                anchor='center',
-                tags='video_frame'
+                anchor='center'
             )
             
-            # Draw markers
-            self.draw_markers()
-
             # Keep reference to prevent garbage collection
             self.canvas.image = photo
             
         except Exception as e:
             self.logger.error(f"Failed to display frame: {e}")
-            self.show_placeholder(f"Display error: {str(e)}")
-
-    def draw_markers(self):
-        """Draw timeline markers on canvas"""
-        if not self.markers or self.total_duration <= 0:
-            return
-
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-
-        for marker_time, marker_label in self.markers:
-            # Calculate marker position
-            marker_x = (marker_time / self.total_duration) * canvas_width
-
-            # Draw marker line
-            self.canvas.create_line(
-                marker_x, 0, marker_x, canvas_height,
-                fill=self.theme_manager.get_color('accent_tertiary'),
-                width=2,
-                tags='marker'
-            )
-
-            # Draw marker label
-            if marker_label:
-                self.canvas.create_text(
-                    marker_x, 20,
-                    text=marker_label,
-                    fill=self.theme_manager.get_color('text_primary'),
-                    font=('Arial', 8),
-                    tags='marker_label'
-                )
     
     def toggle_playback(self):
         """Toggle video playback"""
@@ -361,7 +271,8 @@ class PreviewWidget:
             return
         
         self.stop_playback = False
-        self.playback_thread = threading.Thread(target=self.playback_worker, daemon=True)
+        self.playback_thread = threading.Thread(target=self.playback_worker)
+        self.playback_thread.daemon = True
         self.playback_thread.start()
     
     def stop_playback_thread(self):
@@ -371,34 +282,30 @@ class PreviewWidget:
             self.playback_thread.join(timeout=1.0)
     
     def playback_worker(self):
-        """Playback worker thread with improved timing"""
+        """Playback worker thread"""
         if not self.cap or not self.cap.isOpened():
             return
         
         last_time = time.time()
-        frame_duration = 1.0 / (self.fps * self.playback_speed)
         
         while not self.stop_playback:
             try:
                 # Calculate current frame number
                 current_frame = int(self.current_time * self.fps)
                 
-                # Check if reached end
-                total_frames = int(self.total_duration * self.fps)
-                if current_frame >= total_frames:
-                    # Loop or stop
-                    self.current_time = 0.0
-                    current_frame = 0
-
                 # Load and display frame
                 self.load_frame(current_frame)
                 
                 # Update time
-                self.current_time += frame_duration
+                self.current_time += 1.0 / self.fps
+
+                # Check if reached end
+                if self.current_time >= self.total_duration:
+                    self.current_time = 0.0
                 
                 # Maintain playback speed
                 elapsed = time.time() - last_time
-                sleep_time = max(0, frame_duration - elapsed)
+                sleep_time = max(0, (1.0 / self.fps) - elapsed)
                 time.sleep(sleep_time)
                 last_time = time.time()
                 
@@ -406,17 +313,13 @@ class PreviewWidget:
                 self.logger.error(f"Playback error: {e}")
                 break
         
-        # Reset play button on main thread
-        self.canvas.after_idle(lambda: self.play_btn.config(text="▶"))
+        # Reset play button
         self.is_playing = False
+        self.play_btn.config(text="▶")
     
     def on_seek(self, value):
         """Handle seek slider change"""
-        if not self.cap or not self.cap.isOpened() or self.total_duration <= 0:
-            return
-
-        # Don't seek while playing to avoid conflicts
-        if self.is_playing:
+        if not self.cap or not self.cap.isOpened():
             return
         
         # Calculate new time
@@ -428,41 +331,42 @@ class PreviewWidget:
         self.load_frame(frame_number)
     
     def on_volume_change(self, value):
-        """Handle volume change"""
-        # TODO: Implement volume control if audio playback is added
-        pass
+        """Handle volume slider change"""
+        volume = float(value)
+        self.logger.debug(f"Volume changed to: {volume}%")
+        # TODO: Implement volume control
     
     def on_canvas_resize(self, event):
         """Handle canvas resize"""
         if self.current_frame is not None:
             self.display_frame(self.current_frame)
-        else:
-            self.show_placeholder("No video loaded")
-
-    def on_canvas_click(self, event):
-        """Handle canvas click"""
-        # Placeholder for future functionality (e.g., setting blur regions)
-        pass
     
     def update_time_display(self):
         """Update time display label"""
-        current_str = time.strftime('%M:%S', time.gmtime(self.current_time))
-        total_str = time.strftime('%M:%S', time.gmtime(self.total_duration))
+        current_str = self.format_time(self.current_time)
+        total_str = self.format_time(self.total_duration)
         self.time_label.config(text=f"{current_str} / {total_str}")
     
+    def format_time(self, seconds: float) -> str:
+        """Format time in MM:SS format"""
+        minutes = int(seconds // 60)
+        seconds = int(seconds % 60)
+        return f"{minutes:02d}:{seconds:02d}"
+
     def set_playback_speed(self, speed: float):
         """Set playback speed"""
-        self.playback_speed = max(0.1, speed)
+        self.logger.info(f"Playback speed set to: {speed}x")
+        # TODO: Implement playback speed control
     
-    def add_marker(self, marker_time: float, label: str = ""):
-        """Add a marker to the timeline"""
-        self.markers.append((marker_time, label))
-        self.draw_markers()
+    def add_marker(self, time: float, label: str = ""):
+        """Add marker to timeline"""
+        self.logger.info(f"Added marker at {time:.2f}s: {label}")
+        # TODO: Implement marker functionality
     
     def clear_markers(self):
         """Clear all markers"""
-        self.markers.clear()
-        self.canvas.delete("marker", "marker_label")
+        self.logger.info("Cleared all markers")
+        # TODO: Implement marker clearing
     
     def cleanup(self):
         """Cleanup resources"""
@@ -470,3 +374,21 @@ class PreviewWidget:
         if self.cap:
             self.cap.release()
         self.logger.info("PreviewWidget cleaned up")
+
+# Test the preview_widget
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("Preview Widget Test")
+    root.geometry("800x600")
+
+    theme_manager = ThemeManager()
+    theme_manager.apply_theme(root)
+
+    preview = PreviewWidget(root, theme_manager)
+    preview.frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+    # Test with a sample video path (uncomment to test)
+    # preview.load_video("sample.mp4")
+
+    root.protocol("WM_DELETE_WINDOW", lambda: (preview.cleanup(), root.destroy()))
+    root.mainloop()

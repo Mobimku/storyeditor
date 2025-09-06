@@ -112,8 +112,7 @@ class ThemeManager:
     
     def create_custom_frame(self, parent, style: str = 'TFrame', padding: int = 0) -> ttk.Frame:
         """
-        Create a custom styled frame with optional padding.
-        (Refactored to use standard padding)
+        Create a custom styled frame with optional padding
         
         Args:
             parent: Parent widget
@@ -123,10 +122,27 @@ class ThemeManager:
         Returns:
             Styled frame widget
         """
-        # The complex container logic was breaking the layout.
-        # Using the built-in padding mechanism is much more stable.
-        frame = ttk.Frame(parent, style=style, padding=padding)
-        return frame
+        frame = ttk.Frame(parent, style=style)
+
+        # Add padding if specified
+        if padding > 0:
+            # Create a container frame for padding
+            container = ttk.Frame(parent)
+            container.pack(fill='both', expand=True)
+
+            # Add padding frames
+            # Top padding
+            ttk.Frame(container, height=padding).pack(fill='x')
+
+            # Center content frame
+            frame.pack(fill='both', expand=True, padx=padding, pady=0)
+
+            # Bottom padding
+            ttk.Frame(container, height=padding).pack(fill='x')
+
+            return container
+        else:
+            return frame
     
     def create_custom_button(self, parent, text: str, command=None, 
                            style: str = 'TButton', width: int = None) -> ttk.Button:
@@ -158,7 +174,6 @@ class ThemeManager:
         return button
     
     def create_custom_label(self, parent, text: str, 
-                          style: str = 'TLabel',
                           font: tuple = None) -> ttk.Label:
         """
         Create a custom styled label
@@ -166,13 +181,12 @@ class ThemeManager:
         Args:
             parent: Parent widget
             text: Label text
-            style: Style name for the label
             font: Font tuple (family, size, weight)
             
         Returns:
             Styled label widget
         """
-        return ttk.Label(parent, text=text, style=style,
+        return ttk.Label(parent, text=text,
                         font=font or ('Arial', 10))
     
     def create_custom_progressbar(self, parent, style: str = 'TProgressbar', 
@@ -197,7 +211,7 @@ class ThemeManager:
     
     def create_custom_scale(self, parent, style: str = 'TScale', 
                           from_=0, to=100, variable=None, 
-                          orient='horizontal', length=200) -> ttk.Scale:
+                          orient='horizontal', length=200, command=None) -> ttk.Scale:
         """
         Create a custom styled scale/slider
         
@@ -209,6 +223,7 @@ class ThemeManager:
             variable: Variable to bind to scale
             orient: Orientation ('horizontal' or 'vertical')
             length: Length of scale in pixels
+            command: Command to execute on value change
             
         Returns:
             Styled scale widget
@@ -220,7 +235,7 @@ class ThemeManager:
                            darkcolor=self.theme['accent_secondary'])
         
         return ttk.Scale(parent, style=style, from_=from_, to=to, 
-                        variable=variable, orient=orient, length=length)
+                        variable=variable, orient=orient, length=length, command=command)
     
     def create_custom_entry(self, parent, style: str = 'TEntry', 
                           width: int = None) -> ttk.Entry:
