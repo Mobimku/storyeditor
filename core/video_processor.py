@@ -164,6 +164,129 @@ class VideoProcessor:
         except subprocess.TimeoutExpired:
             raise RuntimeError("Audio extraction timed out")
 
+    def apply_selective_blur(self, input_path: str, blur_regions: list) -> str:
+        if not blur_regions:
+            return input_path
+
+        output_path = self.temp_manager.get_temp_file('_blurred.mp4')
+
+        filter_complex_parts = []
+        video_stream = "[0:v]"
+        for i, region in enumerate(blur_regions):
+            x, y, w, h = region['x'], region['y'], region['width'], region['height']
+            filter_complex_parts.append(
+                f"{video_stream}split[v{i}main][v{i}blur];"
+                f"[v{i}blur]crop={w}:{h}:{x}:{y},boxblur=10[v{i}blurred];"
+                f"[v{i}main][v{i}blurred]overlay={x}:{y}[v{i+1}]"
+            )
+            video_stream = f"[v{i+1}]"
+
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-filter_complex', "".join(filter_complex_parts),
+            '-map', video_stream,
+            '-map', '0:a?',
+            '-c:a', 'copy',
+            '-y',
+            output_path
+        ]
+
+        subprocess.run(cmd, check=True)
+        return output_path
+
+    def remove_silent_parts(self, input_path: str, audio_threshold: float = -40.0) -> tuple:
+        audio_path = self.extract_audio(input_path)
+        output_path = self.temp_manager.get_temp_file('_no_silence.mp4')
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-af', f'silenceremove=start_periods=1:start_threshold={audio_threshold}dB',
+            '-y',
+            output_path
+        ]
+        subprocess.run(cmd, check=True)
+        return output_path, audio_path
+
+    def create_random_cuts(self, input_path: str, scene_data: list) -> list:
+        import random
+        cuts = []
+        for scene in scene_data:
+            duration = scene['end'] - scene['start']
+            if duration > 7:
+                cut_start = random.uniform(scene['start'], scene['end'] - 7)
+                cut_end = cut_start + random.uniform(3, 7)
+            else:
+                cut_start = scene['start']
+                cut_end = scene['end']
+
+            cuts.append(self.trim_video(input_path, cut_start, cut_end))
+        return cuts
+
+    def compile_zigzag_sequence(self, cuts_list: list) -> str:
+        output_path = self.temp_manager.get_temp_file('_zigzag.mp4')
+        list_path = self.temp_manager.get_temp_file('.txt')
+
+        # Zigzag reordering
+        zigzag_list = []
+        i, j = 0, len(cuts_list) - 1
+        while i <= j:
+            if i == j:
+                zigzag_list.append(cuts_list[i])
+                break
+            zigzag_list.append(cuts_list[i])
+            zigzag_list.append(cuts_list[j])
+            i += 1
+            j -= 1
+
+        with open(list_path, 'w') as f:
+            for item in zigzag_list:
+                f.write(f"file '{os.path.abspath(item)}'\n")
+
+        cmd = [
+            self.ffmpeg_path,
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', list_path,
+            '-c', 'copy',
+            '-y',
+            output_path
+        ]
+        subprocess.run(cmd, check=True)
+        return output_path
+
+    def apply_color_grading(self, input_path: str, preset: str) -> str:
+        output_path = self.temp_manager.get_temp_file(f'_graded_{preset}.mp4')
+        # This is a simplified version, a real implementation would have more complex presets
+        vf_options = {
+            'cinematic': 'curves=r=\'0/0.11/0.5/1\':g=\'0/0.1/0.5/1\':b=\'0/0.12/0.5/1\''
+        }
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-vf', vf_options.get(preset, 'eq=contrast=1.1:saturation=1.1'),
+            '-y',
+            output_path
+        ]
+        subprocess.run(cmd, check=True)
+        return output_path
+
+    def add_panning_effects(self, input_path: str, intervals: int = 15) -> str:
+        output_path = self.temp_manager.get_temp_file('_panning.mp4')
+        info = self.get_video_info(input_path)
+        duration = info['duration']
+
+        # Simplified: apply one zoom/pan effect for the whole duration
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-vf', 'zoompan=z=\'min(zoom+0.0015,1.5)\':d=1:x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\'',
+            '-y',
+            output_path
+        ]
+        subprocess.run(cmd, check=True)
+        return output_path
+
 # Test the video_processor
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
