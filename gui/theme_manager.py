@@ -158,6 +158,7 @@ class ThemeManager:
         return button
     
     def create_custom_label(self, parent, text: str, 
+                          style: str = 'TLabel',
                           font: tuple = None) -> ttk.Label:
         """
         Create a custom styled label
@@ -165,12 +166,13 @@ class ThemeManager:
         Args:
             parent: Parent widget
             text: Label text
+            style: Style name for the label
             font: Font tuple (family, size, weight)
             
         Returns:
             Styled label widget
         """
-        return ttk.Label(parent, text=text, 
+        return ttk.Label(parent, text=text, style=style,
                         font=font or ('Arial', 10))
     
     def create_custom_progressbar(self, parent, style: str = 'TProgressbar', 
