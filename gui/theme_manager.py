@@ -112,7 +112,8 @@ class ThemeManager:
     
     def create_custom_frame(self, parent, style: str = 'TFrame', padding: int = 0) -> ttk.Frame:
         """
-        Create a custom styled frame with optional padding
+        Create a custom styled frame with optional padding.
+        (Refactored to use standard padding)
         
         Args:
             parent: Parent widget
@@ -122,27 +123,10 @@ class ThemeManager:
         Returns:
             Styled frame widget
         """
-        frame = ttk.Frame(parent, style=style)
-        
-        # Add padding if specified
-        if padding > 0:
-            # Create a container frame for padding
-            container = ttk.Frame(parent)
-            container.pack(fill='both', expand=True)
-            
-            # Add padding frames
-            # Top padding
-            ttk.Frame(container, height=padding).pack(fill='x')
-            
-            # Center content frame
-            frame.pack(fill='both', expand=True, padx=padding, pady=0)
-            
-            # Bottom padding
-            ttk.Frame(container, height=padding).pack(fill='x')
-            
-            return container
-        else:
-            return frame
+        # The complex container logic was breaking the layout.
+        # Using the built-in padding mechanism is much more stable.
+        frame = ttk.Frame(parent, style=style, padding=padding)
+        return frame
     
     def create_custom_button(self, parent, text: str, command=None, 
                            style: str = 'TButton', width: int = None) -> ttk.Button:
